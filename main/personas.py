@@ -1,20 +1,68 @@
 # main/personas.py
 """
-Define available personas and helper to retrieve them.
+Defines Persona objects with attributes and dynamic behavior for the AI assistant.
 """
+from dataclasses import dataclass
+from typing import List, Dict, Any
+from .memory import Memory
+from .tools import Tool
 
-from collections import namedtuple
 
-Persona = namedtuple('Persona', ['name','model','system_prompt'])
+@dataclass
+class Persona:
+    """Represents an AI persona with name, color, tone, tools, and memory."""
+    name: str
+    color: str
+    tone: str
+    tools: List[Tool]
+    memory: Memory
 
-PERSONA_MAP = {
-    'generalist': Persona('generalist', 'llama3.2', "You are a helpful assistant; answer clearly."),
-    'zen_monk':   Persona('zen_monk',   'tinyllama', "You are a quiet Zen monk speaking in metaphors."),
-    'shakespeare':Persona('shakespeare','gemma3:1b-it-qat',"You speak like Shakespeare: poetic, archaic."),
-    'quantum_mentor':Persona('quantum_mentor','gemma3:4b-it-qat',
-                             "You are a quantum physicist explaining science simply."),
-}
+    def process_input(self, state: Dict[str, Any]) -> str:
+        """
+        Process input with dynamic tone adjustment based on context.
+        
+        Args:
+            state: Dictionary with user_input, tool_output, context, memory, persona.
+            
+        Returns:
+            Formatted prompt string for Ollama.
+        """
+        user_input = state['user_input']
+        context = state['context']
+        memory = state['memory']
+        
+        # Dynamic tone adjustment
+        dynamic_tone = self.tone
+        if any(keyword in user_input.lower() for keyword in ["formal", "professional", "business"]):
+            dynamic_tone = "formal"
+        elif "casual" in user_input.lower():
+            dynamic_tone = "casual"
+        
+        # Retrieve relevant context
+        past_context = memory.retrieve_context(self.name)
+        prompt = (
+            f"Persona: {self.name} (Tone: {dynamic_tone})\n"
+            f"Context: {json.dumps(past_context) if past_context else 'No prior context'}\n"
+            f"Input: {user_input}\n"
+            f"Response: "
+        )
+        return prompt
 
-def get_persona(name: str) -> Persona:
-    return PERSONA_MAP.get(name, PERSONA_MAP['generalist'])
 
+if __name__ == "__main__":
+    from .tools import NoteTaker
+    from .memory import Memory
+    persona = Persona(
+        name="generalist",
+        color="#28a745",
+        tone="neutral",
+        tools=[NoteTaker()],
+        memory=Memory()
+    )
+    state = {
+        "user_input": "Please provide a formal response",
+        "context": {},
+        "memory": persona.memory,
+        "persona": persona
+    }
+    print(persona.process_input(state))
