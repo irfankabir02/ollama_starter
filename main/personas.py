@@ -5,7 +5,7 @@ Defines Persona objects with attributes and dynamic behavior for the AI assistan
 from dataclasses import dataclass
 from typing import List, Dict, Any
 from .memory import Memory
-from .tools import Tool
+from .tools.base import Tool  # Corrected import
 
 
 @dataclass
@@ -50,8 +50,9 @@ class Persona:
 
 
 if __name__ == "__main__":
-    from .tools import NoteTaker
+    from .tools.note_taker import NoteTaker
     from .memory import Memory
+    import json
     persona = Persona(
         name="generalist",
         color="#28a745",
@@ -60,7 +61,7 @@ if __name__ == "__main__":
         memory=Memory()
     )
     state = {
-        "user_input": "Please provide a formal response",
+        "user_input": "formal request",
         "context": {},
         "memory": persona.memory,
         "persona": persona
